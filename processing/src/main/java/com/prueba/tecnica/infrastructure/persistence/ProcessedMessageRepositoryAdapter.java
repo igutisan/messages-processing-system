@@ -4,6 +4,7 @@ import com.prueba.tecnica.domain.model.ProcessedMessage;
 import com.prueba.tecnica.domain.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -41,5 +42,10 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     @Override
     public long countByDestination(String destination) {
         return mongoRepository.countByDestination(destination);
+    }
+
+    @Override
+    public long countSuccessfulByDestinationSince(String destination, Instant since) {
+        return mongoRepository.countByDestinationAndCreatedDateAfterAndErrorIsNull(destination, since);
     }
 }

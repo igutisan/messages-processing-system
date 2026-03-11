@@ -4,6 +4,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -14,4 +15,6 @@ public interface MongoProcessedMessageRepository extends MongoRepository<Process
     List<ProcessedMessageDocument> findByDestination(String destination, Pageable pageable);
 
     long countByDestination(String destination);
+
+    long countByDestinationAndCreatedDateAfterAndErrorIsNull(String destination, Instant since);
 }
