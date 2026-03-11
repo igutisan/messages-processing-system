@@ -38,6 +38,7 @@ public class ProcessMessageUseCase {
                 error);
 
         ProcessedMessage saved = processedMessageRepository.save(processedMessage);
+
         log.info("Message saved. id={}, processingTime={}ms, error={}", saved.getId(), processingTime,
                 saved.getError());
         return saved;
@@ -48,15 +49,13 @@ public class ProcessMessageUseCase {
         long count = processedMessageRepository.countSuccessfulByDestinationSince(destination, windowStart);
 
         if (count >= MAX_MESSAGES_PER_DAY) {
-            log.warn("Message limit exceeded for destination '{}'. Count in last 24h: {}/{}", destination, count,
+            log.warn("Rate limit validation failed: '{}' has reached {}/{} messages today", destination, count,
                     MAX_MESSAGES_PER_DAY);
             return String.format(
                     "Message limit exceeded: destination '%s' has already received %d/%d messages in the last 24 hours.",
                     destination, count, MAX_MESSAGES_PER_DAY);
         }
 
-        log.debug("Message limit check passed for destination '{}'. Count in last 24h: {}/{}", destination, count,
-                MAX_MESSAGES_PER_DAY);
         return null;
     }
 }

@@ -5,11 +5,13 @@ import com.prueba.tecnica.domain.model.ProcessedMessage;
 import com.prueba.tecnica.domain.repository.ProcessedMessageRepository;
 import com.prueba.tecnica.infrastructure.rest.common.PagedResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GetMessagesByDestinationUseCase {
@@ -21,6 +23,9 @@ public class GetMessagesByDestinationUseCase {
         long totalElements = repository.countByDestination(destination);
         int totalPages = (int) Math.ceil((double) totalElements / size);
         boolean isLast = page >= (totalPages - 1);
+
+        log.info("Retrieved {} messages for destination '{}' (Total in system: {})", msgPage.size(), destination,
+                totalElements);
 
         List<ProcessedMessageDto> dtos = msgPage.stream()
                 .map(this::toDto)

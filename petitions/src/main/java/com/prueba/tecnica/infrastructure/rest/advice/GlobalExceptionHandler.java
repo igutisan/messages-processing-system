@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OriginNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleOriginNotFoundException(OriginNotFoundException ex,
             HttpServletRequest request) {
-        log.warn("Origin not found: {} for URI {}", ex.getMessage(), request.getRequestURI());
+        log.warn("Origin Not Found | path: {} | error: {}", request.getRequestURI(), ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ApiResponse<Void>> handleDomainException(DomainException ex, HttpServletRequest request) {
-        log.warn("Domain exception: {} for URI {}", ex.getMessage(), request.getRequestURI());
+        log.warn("Domain Validation Failed | path: {} | error: {}", request.getRequestURI(), ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotReadableException(HttpMessageNotReadableException ex,
             HttpServletRequest request) {
-        log.warn("Unreadable message for URI {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Malformed Request | path: {} | error: {}", request.getRequestURI(), ex.getMessage());
 
         String field = "request";
         if (ex.getCause() instanceof InvalidFormatException cause && !cause.getPath().isEmpty()) {
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException ex,
             HttpServletRequest request) {
-        log.warn("Validation error for URI {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Payload Validation Failed | path: {} | error: {}", request.getRequestURI(), ex.getMessage());
 
         Map<String, String> validationErrors = new HashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex, HttpServletRequest request) {
-        log.error("Unexpected error for URI {}", request.getRequestURI(), ex);
+        log.error("Unhandled Server Error | path: {} | error: {}", request.getRequestURI(), ex.getMessage(), ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error"));
