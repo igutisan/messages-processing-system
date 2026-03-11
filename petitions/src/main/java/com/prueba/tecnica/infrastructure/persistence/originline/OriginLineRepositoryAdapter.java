@@ -4,10 +4,6 @@ import com.prueba.tecnica.domain.repository.OriginLineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * Persistence adapter — implements the domain repository contract
- * using Spring Data JPA.
- */
 @Component
 @RequiredArgsConstructor
 public class OriginLineRepositoryAdapter implements OriginLineRepository {

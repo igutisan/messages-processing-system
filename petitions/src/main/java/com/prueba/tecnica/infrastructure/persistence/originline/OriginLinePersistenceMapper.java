@@ -2,13 +2,10 @@ package com.prueba.tecnica.infrastructure.persistence.originline;
 
 import com.prueba.tecnica.domain.model.OriginLine;
 
-/**
- * Maps between domain model (OriginLine) and JPA entity (OriginLineEntity).
- */
 public final class OriginLinePersistenceMapper {
 
     private OriginLinePersistenceMapper() {
-        // Utility class
+    
     }
 
     public static OriginLineEntity toEntity(OriginLine originLine) {

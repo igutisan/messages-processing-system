@@ -1,6 +1,6 @@
 package com.prueba.tecnica.application.dto;
 
-public record PetitionMessageDto(
+public record PetitionMessageRequestDto(
         String origin,
         String destination,
         String messageType,

@@ -1,6 +1,6 @@
 package com.prueba.tecnica.application.usecase;
 
-import com.prueba.tecnica.application.dto.PetitionMessageDto;
+import com.prueba.tecnica.application.dto.PetitionMessageRequestDto;
 import com.prueba.tecnica.domain.model.MessageType;
 import com.prueba.tecnica.domain.model.ProcessedMessage;
 import com.prueba.tecnica.domain.repository.ProcessedMessageRepository;
@@ -20,7 +20,7 @@ public class ProcessMessageUseCase {
 
     private final ProcessedMessageRepository processedMessageRepository;
 
-    public ProcessedMessage process(PetitionMessageDto dto, String receivedAt) {
+    public ProcessedMessage process(PetitionMessageRequestDto dto, String receivedAt) {
 
         long startMillis = Instant.parse(receivedAt).toEpochMilli();
         MessageType messageType = MessageType.valueOf(dto.messageType().toUpperCase());

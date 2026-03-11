@@ -14,9 +14,6 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/**
- * JPA entity mapped to the "origin_lines" table.
- */
 @Entity
 @Table(name = "origin_lines")
 @Getter
