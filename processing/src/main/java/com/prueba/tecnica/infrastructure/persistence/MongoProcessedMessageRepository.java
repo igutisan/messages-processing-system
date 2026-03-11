@@ -10,8 +10,6 @@ import java.util.List;
 @Repository
 public interface MongoProcessedMessageRepository extends MongoRepository<ProcessedMessageDocument, String> {
 
-    List<ProcessedMessageDocument> findByDestination(String destination);
-
     List<ProcessedMessageDocument> findByDestination(String destination, Pageable pageable);
 
     long countByDestination(String destination);

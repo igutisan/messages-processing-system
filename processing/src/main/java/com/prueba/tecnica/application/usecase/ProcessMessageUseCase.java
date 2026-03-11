@@ -23,20 +23,9 @@ public class ProcessMessageUseCase {
     public ProcessedMessage process(PetitionMessageDto dto, String receivedAt) {
 
         long startMillis = Instant.parse(receivedAt).toEpochMilli();
-        String error = null;
-        MessageType messageType;
+        MessageType messageType = MessageType.valueOf(dto.messageType().toUpperCase());
 
-        try {
-            messageType = MessageType.valueOf(dto.messageType().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            log.warn("Unknown messageType received: '{}'", dto.messageType());
-            messageType = MessageType.TEXT;
-            error = "Unsupported messageType: " + dto.messageType();
-        }
-
-        if (error == null) {
-            error = checkMessageLimit(dto.destination());
-        }
+        String error = checkMessageLimit(dto.destination());
 
         long processingTime = System.currentTimeMillis() - startMillis;
 
@@ -54,12 +43,6 @@ public class ProcessMessageUseCase {
         return saved;
     }
 
-    /**
-     * Verifica si el destinatario ha superado el límite de mensajes en las últimas
-     * 24 horas.
-     *
-     * @return mensaje de error si se superó el límite, null si es válido
-     */
     private String checkMessageLimit(String destination) {
         Instant windowStart = Instant.now().minus(24, ChronoUnit.HOURS);
         long count = processedMessageRepository.countSuccessfulByDestinationSince(destination, windowStart);

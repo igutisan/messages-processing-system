@@ -25,13 +25,6 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     }
 
     @Override
-    public List<ProcessedMessage> findByDestination(String destination) {
-        return mongoRepository.findByDestination(destination).stream()
-                .map(ProcessedMessageMapper::toDomain)
-                .toList();
-    }
-
-    @Override
     public List<ProcessedMessage> findByDestinationPaged(String destination, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
         return mongoRepository.findByDestination(destination, pageable).stream()
