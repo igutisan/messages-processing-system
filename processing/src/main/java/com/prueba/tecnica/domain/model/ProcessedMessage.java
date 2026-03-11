@@ -30,17 +30,16 @@ public class ProcessedMessage {
         this.error = error;
     }
 
-    public static ProcessedMessage create(String origin, String destination,
+    public ProcessedMessage(String origin, String destination,
             MessageType messageType, String content, Long processingTime, String error) {
-        return new ProcessedMessage(
-                UUID.randomUUID().toString(),
-                origin,
-                destination,
-                messageType,
-                content,
-                processingTime,
-                Instant.now(),
-                error);
+        this.id = UUID.randomUUID().toString();
+        this.origin = origin;
+        this.destination = destination;
+        this.messageType = messageType;
+        this.content = content;
+        this.processingTime = processingTime;
+        this.createdDate = Instant.now();
+        this.error = error;
     }
 
     public String getId() {

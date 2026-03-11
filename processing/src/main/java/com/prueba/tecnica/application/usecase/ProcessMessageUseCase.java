@@ -40,7 +40,7 @@ public class ProcessMessageUseCase {
 
         long processingTime = System.currentTimeMillis() - startMillis;
 
-        ProcessedMessage processedMessage = ProcessedMessage.create(
+        ProcessedMessage processedMessage = new ProcessedMessage(
                 dto.origin(),
                 dto.destination(),
                 messageType,
@@ -54,6 +54,12 @@ public class ProcessMessageUseCase {
         return saved;
     }
 
+    /**
+     * Verifica si el destinatario ha superado el límite de mensajes en las últimas
+     * 24 horas.
+     *
+     * @return mensaje de error si se superó el límite, null si es válido
+     */
     private String checkMessageLimit(String destination) {
         Instant windowStart = Instant.now().minus(24, ChronoUnit.HOURS);
         long count = processedMessageRepository.countSuccessfulByDestinationSince(destination, windowStart);

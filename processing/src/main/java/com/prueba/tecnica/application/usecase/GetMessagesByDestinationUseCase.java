@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -15,26 +16,29 @@ public class GetMessagesByDestinationUseCase {
 
     private final ProcessedMessageRepository repository;
 
-    public List<ProcessedMessageDto> execute(String destination) {
-        return repository.findByDestination(destination).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
     public PagedResponse<ProcessedMessageDto> execute(String destination, int page, int size) {
-        List<ProcessedMessageDto> content = repository.findByDestinationPaged(destination, page, size)
-                .stream()
-                .map(this::toDto)
-                .toList();
-
+        List<ProcessedMessage> msgPage = repository.findByDestinationPaged(destination, page, size);
         long totalElements = repository.countByDestination(destination);
-        return PagedResponse.of(content, page, size, totalElements);
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        boolean isLast = page >= (totalPages - 1);
+
+        List<ProcessedMessageDto> dtos = msgPage.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+
+        return new PagedResponse<>(
+                dtos,
+                page,
+                size,
+                totalElements,
+                totalPages,
+                isLast);
     }
 
     private ProcessedMessageDto toDto(ProcessedMessage message) {
         return ProcessedMessageDto.builder()
                 .id(message.getId())
-                .content(message.getContent())
+                .origin(message.getOrigin())
                 .destination(message.getDestination())
                 .messageType(message.getMessageType())
                 .createdDate(message.getCreatedDate())

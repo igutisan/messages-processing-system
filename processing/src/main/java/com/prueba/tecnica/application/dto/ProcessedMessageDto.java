@@ -8,6 +8,7 @@ import java.time.Instant;
 @Builder
 public record ProcessedMessageDto(
         String id,
+        String origin,
         String content,
         String destination,
         MessageType messageType,
