@@ -1,0 +1,9 @@
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+.agents/
+.gemini/

@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: processing
+
+  # ── RabbitMQ ──────────────────────────────────────────────
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  # ── MongoDB ───────────────────────────────────────────────
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/processing
+
+# ── Custom App Properties ────────────────────────────────
+app:
+  rabbitmq:
+    exchange: petitions-exchange
+    queue: petitions-queue
+    routing-key: petition.created

@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: petitions
+
+  # ── RabbitMQ ──────────────────────────────────────────────
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/petitions?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: true  # TEXT, text, Text → todos válidos
+
+# ── Custom App Properties ────────────────────────────────
+app:
+  rabbitmq:
+    exchange: petitions-exchange
+    queue: petitions-queue
+    routing-key:
+      created: petition.created
+
+  security:
+    api-key: ${API_KEY:t3sT-k3y-123!}  # Puede ser inyectado por variable de entorno

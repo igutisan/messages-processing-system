@@ -1,0 +1,65 @@
+services:
+  # ── Aplicación Spring Boot ───────────────────────────────
+  petitions-app:
+    build:
+      context: ./petitions
+      dockerfile: Dockerfile
+    container_name: petitions-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/petitions?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - petitions-network
+    restart: unless-stopped
+
+  # ── Base de Datos MySQL ──────────────────────────────────
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=petitions
+      - MYSQL_ROOT_PASSWORD=password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - petitions-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Message Broker RabbitMQ ──────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Puerto de comunicación
+      - "15672:15672" # Interfaz de administración web (guest/guest)
+    networks:
+      - petitions-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  petitions-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

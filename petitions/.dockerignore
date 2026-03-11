@@ -1,0 +1,28 @@
+# Ignore Maven build output
+target/
+!target/*.jar
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Ignore OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ignore local properties or env files
+*.env
+application-local.yml
+application-local.properties
+
+# Log files
+*.log
+logs/
