@@ -1,12 +1,11 @@
 package com.prueba.tecnica.domain.repository;
 
+import java.util.List;
+
 import com.prueba.tecnica.domain.model.ProcessedMessage;
 
-/**
- * Repository contract for ProcessedMessage persistence.
- * Implemented by the infrastructure persistence adapter.
- */
 public interface ProcessedMessageRepository {
 
     ProcessedMessage save(ProcessedMessage message);
+    List<ProcessedMessage> findByRecipient(String recipient);
 }

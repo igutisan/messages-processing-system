@@ -12,7 +12,11 @@ spring:
   # ── MongoDB ───────────────────────────────────────────────
   data:
     mongodb:
-      uri: mongodb://localhost:27017/processing
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/processing}
+  
+  # For newer Spring Boot versions that might have changed the property path
+  mongodb:
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/processing}
 
 # ── Custom App Properties ────────────────────────────────
 app:

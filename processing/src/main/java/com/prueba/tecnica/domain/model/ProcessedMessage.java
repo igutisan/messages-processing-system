@@ -3,10 +3,6 @@ package com.prueba.tecnica.domain.model;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Domain model representing a processed petition message.
- * Pure domain object — no framework dependencies.
- */
 public class ProcessedMessage {
 
     private String id;
@@ -34,9 +30,6 @@ public class ProcessedMessage {
         this.error = error;
     }
 
-    /**
-     * Factory method — creates a new ProcessedMessage generating a random UUID.
-     */
     public static ProcessedMessage create(String origin, String destination,
             MessageType messageType, String content, Long processingTime, String error) {
         return new ProcessedMessage(

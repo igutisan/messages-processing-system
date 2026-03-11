@@ -1,5 +1,5 @@
 services:
-  # ── Aplicación Spring Boot ───────────────────────────────
+  # ── Servicios ───────────────────────────────
   petitions-app:
     build:
       context: ./petitions
@@ -15,6 +15,26 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - petitions-network
+    restart: unless-stopped
+
+  processing-app:
+    build:
+      context: ./processing
+      dockerfile: Dockerfile
+    container_name: processing-app
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/processing
+      - SPRING_MONGODB_URI=mongodb://mongodb:27017/processing
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mongodb:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
     networks:
@@ -46,8 +66,8 @@ services:
     image: rabbitmq:3.13-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # Puerto de comunicación
-      - "15672:15672" # Interfaz de administración web (guest/guest)
+      - "5672:5672" 
+      - "15672:15672" 
     networks:
       - petitions-network
     healthcheck:
@@ -57,9 +77,22 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ── Base de Datos MongoDB (Processing) ──────────────────
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - petitions-network
+    restart: unless-stopped
+
 networks:
   petitions-network:
     driver: bridge
 
 volumes:
   mysql_data:
+  mongo_data:
