@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,10 +38,6 @@ class ProcessMessageUseCaseTest {
         private static final String DESTINATION = "+573007654321";
         private static final String CONTENT = "Hello world";
         private static final String RECEIVED_AT = Instant.now().toString();
-
-        // ──────────────────────────────────────────────────────────────
-        // Successful Processing
-        // ──────────────────────────────────────────────────────────────
 
         @Nested
         @DisplayName("Successful message processing")
@@ -163,10 +160,6 @@ class ProcessMessageUseCaseTest {
                 }
         }
 
-        // ──────────────────────────────────────────────────────────────
-        // Rate Limiting
-        // ──────────────────────────────────────────────────────────────
-
         @Nested
         @DisplayName("Rate limiting (MAX_MESSAGES_PER_DAY = 3)")
         class RateLimiting {
@@ -270,6 +263,94 @@ class ProcessMessageUseCaseTest {
                         assertTrue(diffSeconds < 5,
                                         "Rate limit window should start approximately 24 hours ago, but diff was "
                                                         + diffSeconds + "s");
+                }
+
+                @Test
+                @DisplayName("Should allow 1st, 2nd, 3rd message, then BLOCK the 4th for the same destination")
+                void shouldAllowUpToLimitThenBlock() {
+                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
+                                        .thenAnswer(invocation -> invocation.getArgument(0));
+
+                        // Simulate sequential calls: repo returns 0, 1, 2 (OK), then 3 (blocked)
+                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
+                                        any(Instant.class)))
+                                        .thenReturn(0L, 1L, 2L, 3L);
+
+                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
+                                        CONTENT);
+                        String receivedAt = Instant.now().toString();
+
+                        ProcessedMessage result1 = processMessageUseCase.process(dto, receivedAt);
+                        ProcessedMessage result2 = processMessageUseCase.process(dto, receivedAt);
+                        ProcessedMessage result3 = processMessageUseCase.process(dto, receivedAt);
+                        ProcessedMessage result4 = processMessageUseCase.process(dto, receivedAt);
+
+                        assertNull(result1.getError(), "1st message should pass");
+                        assertNull(result2.getError(), "2nd message should pass");
+                        assertNull(result3.getError(), "3rd message should pass");
+                        assertNotNull(result4.getError(), "4th message should be blocked");
+                        assertTrue(result4.getError().contains(DESTINATION));
+                }
+
+                @Test
+                @DisplayName("Should evaluate rate limit PER DESTINATION — blocking one should not affect another")
+                void shouldEvaluateRateLimitPerDestination() {
+                        String destinationA = "+573001111111";
+                        String destinationB = "+573002222222";
+
+                        // Destination A has reached the limit, destination B has not
+                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(destinationA),
+                                        any(Instant.class)))
+                                        .thenReturn(3L);
+                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(destinationB),
+                                        any(Instant.class)))
+                                        .thenReturn(1L);
+                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
+                                        .thenAnswer(invocation -> invocation.getArgument(0));
+
+                        String receivedAt = Instant.now().toString();
+
+                        PetitionMessageRequestDto dtoA = new PetitionMessageRequestDto(ORIGIN, destinationA, "TEXT",
+                                        CONTENT);
+                        PetitionMessageRequestDto dtoB = new PetitionMessageRequestDto(ORIGIN, destinationB, "TEXT",
+                                        CONTENT);
+
+                        ProcessedMessage resultA = processMessageUseCase.process(dtoA, receivedAt);
+                        ProcessedMessage resultB = processMessageUseCase.process(dtoB, receivedAt);
+
+                        assertNotNull(resultA.getError(), "Destination A should be blocked (3 messages)");
+                        assertNull(resultB.getError(), "Destination B should still be allowed (1 message)");
+                }
+
+                @Test
+                @DisplayName("Should query the repository with a fresh 24h window on EACH call")
+                void shouldQueryFresh24hWindowOnEachCall() {
+                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
+                                        any(Instant.class)))
+                                        .thenReturn(0L);
+                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
+                                        .thenAnswer(invocation -> invocation.getArgument(0));
+
+                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
+                                        CONTENT);
+                        String receivedAt = Instant.now().toString();
+
+                        processMessageUseCase.process(dto, receivedAt);
+                        processMessageUseCase.process(dto, receivedAt);
+
+                        ArgumentCaptor<Instant> windowCaptor = ArgumentCaptor.forClass(Instant.class);
+                        verify(processedMessageRepository, times(2))
+                                        .countSuccessfulByDestinationSince(eq(DESTINATION), windowCaptor.capture());
+
+                        List<Instant> windows = windowCaptor.getAllValues();
+                        assertEquals(2, windows.size(), "Should have queried the 24h window exactly twice");
+
+                        // Both windows should be approximately 24h ago (within seconds of each other)
+                        long diffBetweenWindows = Math.abs(
+                                        windows.get(0).getEpochSecond() - windows.get(1).getEpochSecond());
+                        assertTrue(diffBetweenWindows < 2,
+                                        "Both calls should use a fresh 24h window from 'now', diff was "
+                                                        + diffBetweenWindows + "s");
                 }
         }
 
