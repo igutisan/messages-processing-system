@@ -6,12 +6,10 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
-/**
- * Persistence adapter — implements the domain repository contract using Spring
- * Data MongoDB.
- */
 @Component
 @RequiredArgsConstructor
 public class ProcessedMessageRepositoryAdapter implements ProcessedMessageRepository {
@@ -26,9 +24,22 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     }
 
     @Override
-    public List<ProcessedMessage> findByRecipient(String recipient) {
-        return mongoRepository.findByDestination(recipient).stream()
+    public List<ProcessedMessage> findByDestination(String destination) {
+        return mongoRepository.findByDestination(destination).stream()
                 .map(ProcessedMessageMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<ProcessedMessage> findByDestinationPaged(String destination, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        return mongoRepository.findByDestination(destination, pageable).stream()
+                .map(ProcessedMessageMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countByDestination(String destination) {
+        return mongoRepository.countByDestination(destination);
     }
 }

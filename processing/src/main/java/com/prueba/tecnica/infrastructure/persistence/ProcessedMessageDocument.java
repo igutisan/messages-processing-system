@@ -5,10 +5,6 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-
-/**
- * MongoDB document mapped to the "processed_messages" collection.
- */
 @Document(collection = "processed_messages")
 public class ProcessedMessageDocument {
 
