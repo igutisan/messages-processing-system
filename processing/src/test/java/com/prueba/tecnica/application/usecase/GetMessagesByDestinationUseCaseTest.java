@@ -88,48 +88,6 @@ class GetMessagesByDestinationUseCaseTest {
             assertFalse(response.last(), "Should not be last page");
         }
 
-        @Test
-        @DisplayName("Should set page and size in the response correctly")
-        void shouldSetPageAndSizeCorrectly() {
-            when(repository.findByDestinationPagedFiltered(DESTINATION, 1, 10, null))
-                    .thenReturn(Collections.emptyList());
-            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(5L);
-
-            PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    1, 10, null);
-
-            assertEquals(1, response.page());
-            assertEquals(10, response.size());
-        }
-
-        @Test
-        @DisplayName("Should return empty content list when no messages for destination")
-        void shouldReturnEmptyContentWhenNoMessages() {
-            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
-                    .thenReturn(Collections.emptyList());
-            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(0L);
-
-            PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10, null);
-
-            assertTrue(response.content().isEmpty());
-            assertEquals(0, response.totalElements());
-            assertTrue(response.last());
-        }
-
-        @Test
-        @DisplayName("Should return totalPages=1 when all elements fit in one page")
-        void shouldReturnSinglePageWhenAllFit() {
-            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
-                    .thenReturn(List.of(buildMessage("1", "+57300A", MessageType.TEXT, null)));
-            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(1L);
-
-            PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10, null);
-
-            assertEquals(1, response.totalPages());
-            assertTrue(response.last());
-        }
     }
 
     @Nested

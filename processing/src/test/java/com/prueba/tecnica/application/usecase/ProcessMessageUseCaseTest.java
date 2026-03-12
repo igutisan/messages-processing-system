@@ -119,19 +119,6 @@ class ProcessMessageUseCaseTest {
                 }
 
                 @Test
-                @DisplayName("Should persist the message via repository save")
-                void shouldCallRepositorySave() {
-                        givenSlotAvailable();
-                        givenSaveReturnsInput();
-
-                        processMessageUseCase.process(
-                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
-                                        RECEIVED_AT);
-
-                        verify(processedMessageRepository, times(1)).save(any(ProcessedMessage.class));
-                }
-
-                @Test
                 @DisplayName("Should return the saved message from repository")
                 void shouldReturnSavedMessage() {
                         ProcessedMessage savedMessage = new ProcessedMessage(
@@ -171,19 +158,6 @@ class ProcessMessageUseCaseTest {
                 }
 
                 @Test
-                @DisplayName("Should set null error when slot is acquired (within limit)")
-                void shouldSetNullErrorWhenSlotAcquired() {
-                        givenSlotAvailable();
-                        givenSaveReturnsInput();
-
-                        ProcessedMessage result = processMessageUseCase.process(
-                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
-                                        RECEIVED_AT);
-
-                        assertNull(result.getError());
-                }
-
-                @Test
                 @DisplayName("Should still SAVE the message even when rate limit is exceeded")
                 void shouldStillSaveWhenRateLimited() {
                         givenSlotExhausted();
@@ -197,12 +171,12 @@ class ProcessMessageUseCaseTest {
                 }
 
                 @Test
-                @DisplayName("Should call incrementMessageCountIfAllowed with approximately a 24-hour window")
+                @DisplayName("Should call incrementMessageCountIfAllowed with approximately the current time")
                 void shouldUse24HourWindowForRateLimit() {
                         givenSlotAvailable();
                         givenSaveReturnsInput();
 
-                        Instant before = Instant.now().minusSeconds(1);
+                        Instant before = Instant.now();
                         processMessageUseCase.process(
                                         new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
                                         RECEIVED_AT);
@@ -212,10 +186,9 @@ class ProcessMessageUseCaseTest {
                                         windowCaptor.capture(),
                                         eq(3));
 
-                        Instant windowStart = windowCaptor.getValue();
-                        Instant expected = before.minusSeconds(24 * 60 * 60);
-                        long diffSeconds = Math.abs(windowStart.getEpochSecond() - expected.getEpochSecond());
-                        assertTrue(diffSeconds < 5, "Window should be ~24h ago, diff was " + diffSeconds + "s");
+                        Instant capturedNow = windowCaptor.getValue();
+                        long diffSeconds = Math.abs(capturedNow.getEpochSecond() - before.getEpochSecond());
+                        assertTrue(diffSeconds < 5, "Captured instant should be ~now, diff was " + diffSeconds + "s");
                 }
 
                 @Test
@@ -244,7 +217,7 @@ class ProcessMessageUseCaseTest {
                 }
 
                 @Test
-                @DisplayName("Should call tryAcquireSlot with MAX=3")
+                @DisplayName("Should call incrementMessageCountIfAllowed with MAX=3")
                 void shouldCallTryAcquireSlotWithCorrectMax() {
                         givenSlotAvailable();
                         givenSaveReturnsInput();

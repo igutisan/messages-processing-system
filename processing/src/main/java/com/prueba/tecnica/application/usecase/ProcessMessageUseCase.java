@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 @Slf4j
 @Service
@@ -24,8 +23,8 @@ public class ProcessMessageUseCase {
         long startMillis = Instant.parse(receivedAt).toEpochMilli();
         MessageType messageType = MessageType.valueOf(dto.messageType().toUpperCase());
 
-        Instant windowStart = Instant.now().minus(24, ChronoUnit.HOURS);
-        boolean acquired = processedMessageRepository.incrementMessageCountIfAllowed(dto.destination(), windowStart,
+        Instant now = Instant.now();
+        boolean acquired = processedMessageRepository.incrementMessageCountIfAllowed(dto.destination(), now,
                 MAX_MESSAGES_PER_DAY);
 
         String error = acquired ? null

@@ -5,6 +5,7 @@ import com.prueba.tecnica.domain.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -61,36 +62,50 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     }
 
     @Override
-    public boolean incrementMessageCountIfAllowed(String destination, Instant windowStart, int max) {
-        Query query = new Query(
+    public boolean incrementMessageCountIfAllowed(String destination, Instant now, int max) {
+        Instant windowThreshold = now.minus(24, ChronoUnit.HOURS);
+
+        Query withinLimitQuery = new Query(
                 Criteria.where("destination").is(destination)
                         .and("count").lt(max)
-                        .and("windowStart").gte(windowStart));
+                        .and("windowStart").gte(windowThreshold));
 
-        Update increment = new Update().inc("count", 1);
-
-        DestinationCounterDocument result = mongoTemplate.findAndModify(
-                query,
-                increment,
+        DestinationCounterDocument incremented = mongoTemplate.findAndModify(
+                withinLimitQuery,
+                new Update().inc("count", 1),
                 FindAndModifyOptions.options().returnNew(true),
                 DestinationCounterDocument.class);
 
-        if (result != null) {
+        if (incremented != null) {
             return true;
         }
 
-        Query createQuery = new Query(Criteria.where("destination").is(destination));
-        Update upsert = new Update()
+        Query expiredWindowQuery = new Query(
+                Criteria.where("destination").is(destination)
+                        .and("windowStart").lt(windowThreshold));
+
+        DestinationCounterDocument reset = mongoTemplate.findAndModify(
+                expiredWindowQuery,
+                new Update().set("count", 1).set("windowStart", now),
+                FindAndModifyOptions.options().returnNew(false),
+                DestinationCounterDocument.class);
+
+        if (reset != null) {
+            return true;
+        }
+
+        Query newDestQuery = new Query(Criteria.where("destination").is(destination));
+        Update insertOnly = new Update()
                 .setOnInsert("destination", destination)
-                .setOnInsert("windowStart", windowStart)
-                .setOnInsert("count", 1);
+                .setOnInsert("count", 1)
+                .setOnInsert("windowStart", now);
 
         DestinationCounterDocument created = mongoTemplate.findAndModify(
-                createQuery,
-                upsert,
+                newDestQuery,
+                insertOnly,
                 FindAndModifyOptions.options().upsert(true).returnNew(true),
                 DestinationCounterDocument.class);
 
-        return created != null && created.getCount() <= max;
+        return created != null && created.getCount() == 1;
     }
 }

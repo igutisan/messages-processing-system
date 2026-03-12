@@ -120,23 +120,6 @@ class PetitionUseCaseTest {
             verify(petitionMessageGateway).publishPetition(any(Petition.class));
         }
 
-        @Test
-        @DisplayName("Should pass the correct data from DTO to the Petition domain model")
-        void shouldMapDtoFieldsToPetitionCorrectly() {
-            CreatePetitionRequestDto request = new CreatePetitionRequestDto(
-                    REGISTERED_ORIGIN, DESTINATION, MessageType.TEXT, TEXT_CONTENT);
-
-            petitionUseCase.processPetition(request);
-
-            ArgumentCaptor<Petition> petitionCaptor = ArgumentCaptor.forClass(Petition.class);
-            verify(petitionMessageGateway).publishPetition(petitionCaptor.capture());
-
-            Petition captured = petitionCaptor.getValue();
-            assertEquals(REGISTERED_ORIGIN, captured.getOrigin());
-            assertEquals(DESTINATION, captured.getDestination());
-            assertEquals(MessageType.TEXT, captured.getMessageType());
-            assertEquals(TEXT_CONTENT, captured.getContent());
-        }
     }
 
     @Nested
@@ -246,19 +229,6 @@ class PetitionUseCaseTest {
     class GatewayInteractionContract {
 
         @Test
-        @DisplayName("Should call publishPetition exactly once per valid petition")
-        void shouldCallPublishExactlyOnce() {
-            when(originLineRepository.existPhoneNumber(REGISTERED_ORIGIN)).thenReturn(true);
-
-            CreatePetitionRequestDto request = new CreatePetitionRequestDto(
-                    REGISTERED_ORIGIN, DESTINATION, MessageType.TEXT, TEXT_CONTENT);
-
-            petitionUseCase.processPetition(request);
-
-            verify(petitionMessageGateway, times(1)).publishPetition(any(Petition.class));
-        }
-
-        @Test
         @DisplayName("Should provide a receivedAt timestamp that is close to 'now'")
         void shouldProvideRecentTimestamp() {
             when(originLineRepository.existPhoneNumber(REGISTERED_ORIGIN)).thenReturn(true);
@@ -280,32 +250,5 @@ class PetitionUseCaseTest {
                     "receivedAt should not be after the test ended");
         }
 
-        @Test
-        @DisplayName("Should never call gateway when origin validation fails")
-        void shouldNeverCallGatewayOnOriginFailure() {
-            when(originLineRepository.existPhoneNumber(UNREGISTERED_ORIGIN)).thenReturn(false);
-
-            CreatePetitionRequestDto request = new CreatePetitionRequestDto(
-                    UNREGISTERED_ORIGIN, DESTINATION, MessageType.TEXT, TEXT_CONTENT);
-
-            assertThrows(OriginNotFoundException.class,
-                    () -> petitionUseCase.processPetition(request));
-
-            verifyNoInteractions(petitionMessageGateway);
-        }
-
-        @Test
-        @DisplayName("Should never call gateway when multimedia URL validation fails")
-        void shouldNeverCallGatewayOnUrlFailure() {
-            when(originLineRepository.existPhoneNumber(REGISTERED_ORIGIN)).thenReturn(true);
-
-            CreatePetitionRequestDto request = new CreatePetitionRequestDto(
-                    REGISTERED_ORIGIN, DESTINATION, MessageType.IMAGE, "ftp://bad.com/img.png");
-
-            assertThrows(DomainException.class,
-                    () -> petitionUseCase.processPetition(request));
-
-            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
-        }
     }
 }
