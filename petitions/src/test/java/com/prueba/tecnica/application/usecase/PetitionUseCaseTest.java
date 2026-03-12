@@ -5,6 +5,7 @@ import com.prueba.tecnica.domain.enums.MessageType;
 import com.prueba.tecnica.domain.exception.DomainException;
 import com.prueba.tecnica.domain.exception.OriginNotFoundException;
 import com.prueba.tecnica.domain.gateway.PetitionMessageGateway;
+import com.prueba.tecnica.domain.model.Petition;
 import com.prueba.tecnica.domain.repository.OriginLineRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,8 +23,6 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,7 +63,7 @@ class PetitionUseCaseTest {
 
             assertTrue(exception.getMessage().contains(UNREGISTERED_ORIGIN),
                     "Exception message should reference the unregistered phone number");
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
 
         @Test
@@ -78,7 +77,7 @@ class PetitionUseCaseTest {
             assertThrows(OriginNotFoundException.class,
                     () -> petitionUseCase.processPetition(request));
 
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
     }
 
@@ -99,11 +98,15 @@ class PetitionUseCaseTest {
 
             petitionUseCase.processPetition(request);
 
-            ArgumentCaptor<String> receivedAtCaptor = ArgumentCaptor.forClass(String.class);
-            verify(petitionMessageGateway).publishPetition(eq(request), receivedAtCaptor.capture());
+            ArgumentCaptor<Petition> petitionCaptor = ArgumentCaptor.forClass(Petition.class);
+            verify(petitionMessageGateway).publishPetition(petitionCaptor.capture());
 
-            String receivedAt = receivedAtCaptor.getValue();
-            assertDoesNotThrow(() -> Instant.parse(receivedAt),
+            Petition captured = petitionCaptor.getValue();
+            assertEquals(REGISTERED_ORIGIN, captured.getOrigin());
+            assertEquals(DESTINATION, captured.getDestination());
+            assertEquals(MessageType.TEXT, captured.getMessageType());
+            assertEquals(TEXT_CONTENT, captured.getContent());
+            assertDoesNotThrow(() -> Instant.parse(captured.getReceivedAt()),
                     "receivedAt should be a valid ISO-8601 instant");
         }
 
@@ -114,26 +117,25 @@ class PetitionUseCaseTest {
                     REGISTERED_ORIGIN, DESTINATION, MessageType.TEXT, "esto no es una url ::: |||");
 
             assertDoesNotThrow(() -> petitionUseCase.processPetition(request));
-            verify(petitionMessageGateway).publishPetition(eq(request), anyString());
+            verify(petitionMessageGateway).publishPetition(any(Petition.class));
         }
 
         @Test
-        @DisplayName("Should pass the exact same request DTO to the gateway without modification")
-        void shouldPassExactRequestDtoToGateway() {
+        @DisplayName("Should pass the correct data from DTO to the Petition domain model")
+        void shouldMapDtoFieldsToPetitionCorrectly() {
             CreatePetitionRequestDto request = new CreatePetitionRequestDto(
                     REGISTERED_ORIGIN, DESTINATION, MessageType.TEXT, TEXT_CONTENT);
 
             petitionUseCase.processPetition(request);
 
-            ArgumentCaptor<CreatePetitionRequestDto> requestCaptor = ArgumentCaptor
-                    .forClass(CreatePetitionRequestDto.class);
-            verify(petitionMessageGateway).publishPetition(requestCaptor.capture(), anyString());
+            ArgumentCaptor<Petition> petitionCaptor = ArgumentCaptor.forClass(Petition.class);
+            verify(petitionMessageGateway).publishPetition(petitionCaptor.capture());
 
-            CreatePetitionRequestDto captured = requestCaptor.getValue();
-            assertEquals(REGISTERED_ORIGIN, captured.origin());
-            assertEquals(DESTINATION, captured.destination());
-            assertEquals(MessageType.TEXT, captured.messageType());
-            assertEquals(TEXT_CONTENT, captured.content());
+            Petition captured = petitionCaptor.getValue();
+            assertEquals(REGISTERED_ORIGIN, captured.getOrigin());
+            assertEquals(DESTINATION, captured.getDestination());
+            assertEquals(MessageType.TEXT, captured.getMessageType());
+            assertEquals(TEXT_CONTENT, captured.getContent());
         }
     }
 
@@ -155,7 +157,7 @@ class PetitionUseCaseTest {
 
             petitionUseCase.processPetition(request);
 
-            verify(petitionMessageGateway).publishPetition(eq(request), anyString());
+            verify(petitionMessageGateway).publishPetition(any(Petition.class));
         }
 
         @ParameterizedTest(name = "Should publish {0} with valid HTTP URL")
@@ -167,7 +169,7 @@ class PetitionUseCaseTest {
 
             petitionUseCase.processPetition(request);
 
-            verify(petitionMessageGateway).publishPetition(eq(request), anyString());
+            verify(petitionMessageGateway).publishPetition(any(Petition.class));
         }
 
         @ParameterizedTest(name = "Should reject {0} with ftp:// scheme")
@@ -181,7 +183,7 @@ class PetitionUseCaseTest {
                     () -> petitionUseCase.processPetition(request));
 
             assertNotNull(exception.getMessage());
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
 
         @ParameterizedTest(name = "Should reject {0} with file:// scheme")
@@ -195,7 +197,7 @@ class PetitionUseCaseTest {
                     () -> petitionUseCase.processPetition(request));
 
             assertNotNull(exception.getMessage());
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
 
         @ParameterizedTest(name = "Should reject {0} with malformed URL")
@@ -209,7 +211,7 @@ class PetitionUseCaseTest {
                     () -> petitionUseCase.processPetition(request));
 
             assertNotNull(exception.getMessage());
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
 
         @Test
@@ -222,7 +224,7 @@ class PetitionUseCaseTest {
                     () -> petitionUseCase.processPetition(request));
 
             assertNotNull(exception.getMessage());
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
 
         @Test
@@ -235,7 +237,7 @@ class PetitionUseCaseTest {
                     () -> petitionUseCase.processPetition(request));
 
             assertNotNull(exception.getMessage());
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
     }
 
@@ -253,7 +255,7 @@ class PetitionUseCaseTest {
 
             petitionUseCase.processPetition(request);
 
-            verify(petitionMessageGateway, times(1)).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, times(1)).publishPetition(any(Petition.class));
         }
 
         @Test
@@ -268,10 +270,10 @@ class PetitionUseCaseTest {
             petitionUseCase.processPetition(request);
             Instant after = Instant.now();
 
-            ArgumentCaptor<String> receivedAtCaptor = ArgumentCaptor.forClass(String.class);
-            verify(petitionMessageGateway).publishPetition(eq(request), receivedAtCaptor.capture());
+            ArgumentCaptor<Petition> petitionCaptor = ArgumentCaptor.forClass(Petition.class);
+            verify(petitionMessageGateway).publishPetition(petitionCaptor.capture());
 
-            Instant receivedAt = Instant.parse(receivedAtCaptor.getValue());
+            Instant receivedAt = Instant.parse(petitionCaptor.getValue().getReceivedAt());
             assertFalse(receivedAt.isBefore(before),
                     "receivedAt should not be before the test started");
             assertFalse(receivedAt.isAfter(after),
@@ -303,7 +305,7 @@ class PetitionUseCaseTest {
             assertThrows(DomainException.class,
                     () -> petitionUseCase.processPetition(request));
 
-            verify(petitionMessageGateway, never()).publishPetition(any(), anyString());
+            verify(petitionMessageGateway, never()).publishPetition(any(Petition.class));
         }
     }
 }

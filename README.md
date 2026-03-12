@@ -128,10 +128,11 @@ Para los tipos multimedia, `content` debe ser una URL válida con esquema `http:
 | `destination` | path | — | Número de teléfono destino |
 | `page` | query | `0` | Página (0-indexed) |
 | `size` | query | `20` | Elementos por página |
+| `success` | query | `null` | Si es `true` retorna solo exitosos. Si es `false` retorna solo filtrados por rate-limit. Si no se envía retorna todos. |
 
 **Ejemplo:**
 ```
-GET http://localhost:8081/api/v1/messages/destination/+573007654321?page=0&size=10
+GET http://localhost:8081/api/v1/messages/destination/+573007654321?success=true&page=0&size=10
 ```
 
 **Respuesta exitosa (`200 OK`):**

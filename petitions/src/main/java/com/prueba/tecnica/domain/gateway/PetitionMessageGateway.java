@@ -1,8 +1,8 @@
 package com.prueba.tecnica.domain.gateway;
 
-import com.prueba.tecnica.application.dto.CreatePetitionRequestDto;
+import com.prueba.tecnica.domain.model.Petition;
 
 public interface PetitionMessageGateway {
 
-    void publishPetition(CreatePetitionRequestDto request, String receivedAt);
+    void publishPetition(Petition petition);
 }

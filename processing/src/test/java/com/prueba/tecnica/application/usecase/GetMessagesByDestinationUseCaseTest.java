@@ -43,15 +43,15 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should calculate totalPages correctly (10 elements / size 3 = 4 pages)")
         void shouldCalculateTotalPagesCorrectly() {
-            when(repository.findByDestinationPaged(DESTINATION, 0, 3))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 3, null))
                     .thenReturn(List.of(
                             buildMessage("1", "+57300A", MessageType.TEXT, null),
                             buildMessage("2", "+57300B", MessageType.TEXT, null),
                             buildMessage("3", "+57300C", MessageType.TEXT, null)));
-            when(repository.countByDestination(DESTINATION)).thenReturn(10L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(10L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 3);
+                    0, 3, null);
 
             assertEquals(4, response.totalPages());
             assertEquals(10, response.totalElements());
@@ -60,12 +60,12 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should mark last=true when on the last page")
         void shouldMarkLastTrueOnLastPage() {
-            when(repository.findByDestinationPaged(DESTINATION, 2, 5))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 2, 5, null))
                     .thenReturn(List.of(buildMessage("1", "+57300A", MessageType.TEXT, null)));
-            when(repository.countByDestination(DESTINATION)).thenReturn(11L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(11L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    2, 5);
+                    2, 5, null);
 
             assertTrue(response.last(), "Should be last page (page 2 of 3, zero-indexed)");
         }
@@ -73,17 +73,17 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should mark last=false when NOT on the last page")
         void shouldMarkLastFalseWhenNotLastPage() {
-            when(repository.findByDestinationPaged(DESTINATION, 0, 5))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 5, null))
                     .thenReturn(List.of(
                             buildMessage("1", "+57300A", MessageType.TEXT, null),
                             buildMessage("2", "+57300B", MessageType.TEXT, null),
                             buildMessage("3", "+57300C", MessageType.TEXT, null),
                             buildMessage("4", "+57300D", MessageType.TEXT, null),
                             buildMessage("5", "+57300E", MessageType.TEXT, null)));
-            when(repository.countByDestination(DESTINATION)).thenReturn(11L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(11L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 5);
+                    0, 5, null);
 
             assertFalse(response.last(), "Should not be last page");
         }
@@ -91,12 +91,12 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should set page and size in the response correctly")
         void shouldSetPageAndSizeCorrectly() {
-            when(repository.findByDestinationPaged(DESTINATION, 1, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 1, 10, null))
                     .thenReturn(Collections.emptyList());
-            when(repository.countByDestination(DESTINATION)).thenReturn(5L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(5L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    1, 10);
+                    1, 10, null);
 
             assertEquals(1, response.page());
             assertEquals(10, response.size());
@@ -105,12 +105,12 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should return empty content list when no messages for destination")
         void shouldReturnEmptyContentWhenNoMessages() {
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
                     .thenReturn(Collections.emptyList());
-            when(repository.countByDestination(DESTINATION)).thenReturn(0L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(0L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10);
+                    0, 10, null);
 
             assertTrue(response.content().isEmpty());
             assertEquals(0, response.totalElements());
@@ -120,12 +120,12 @@ class GetMessagesByDestinationUseCaseTest {
         @Test
         @DisplayName("Should return totalPages=1 when all elements fit in one page")
         void shouldReturnSinglePageWhenAllFit() {
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
                     .thenReturn(List.of(buildMessage("1", "+57300A", MessageType.TEXT, null)));
-            when(repository.countByDestination(DESTINATION)).thenReturn(1L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(1L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10);
+                    0, 10, null);
 
             assertEquals(1, response.totalPages());
             assertTrue(response.last());
@@ -144,12 +144,12 @@ class GetMessagesByDestinationUseCaseTest {
                     "msg-123", "+57300ORIGIN", DESTINATION, MessageType.IMAGE, "https://img.com/pic.png",
                     42L, createdDate, null);
 
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
                     .thenReturn(List.of(message));
-            when(repository.countByDestination(DESTINATION)).thenReturn(1L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(1L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10);
+                    0, 10, null);
 
             assertEquals(1, response.content().size());
 
@@ -172,12 +172,12 @@ class GetMessagesByDestinationUseCaseTest {
                     "msg-err", "+57300ORIGIN", DESTINATION, MessageType.TEXT, "hello",
                     10L, Instant.now(), errorMsg);
 
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
                     .thenReturn(List.of(message));
-            when(repository.countByDestination(DESTINATION)).thenReturn(1L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(1L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10);
+                    0, 10, null);
 
             ProcessedMessageResponseDto dto = response.content().get(0);
             assertEquals(errorMsg, dto.error());
@@ -190,12 +190,12 @@ class GetMessagesByDestinationUseCaseTest {
             ProcessedMessage msg2 = buildMessage("second", "+57300B", MessageType.VIDEO, null);
             ProcessedMessage msg3 = buildMessage("third", "+57300C", MessageType.DOCUMENT, "error");
 
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, null))
                     .thenReturn(List.of(msg1, msg2, msg3));
-            when(repository.countByDestination(DESTINATION)).thenReturn(3L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(3L);
 
             PagedResponse<ProcessedMessageResponseDto> response = getMessagesByDestinationUseCase.execute(DESTINATION,
-                    0, 10);
+                    0, 10, null);
 
             assertEquals(3, response.content().size());
             assertEquals("first", response.content().get(0).id());
@@ -212,27 +212,42 @@ class GetMessagesByDestinationUseCaseTest {
     class RepositoryInteraction {
 
         @Test
-        @DisplayName("Should call findByDestinationPaged with correct parameters")
-        void shouldCallFindWithCorrectParams() {
-            when(repository.findByDestinationPaged(DESTINATION, 2, 5))
+        @DisplayName("Should call findByDestinationPagedFiltered with correct parameters when success filter is null")
+        void shouldCallFindWithNullFilter() {
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 2, 5, null))
                     .thenReturn(Collections.emptyList());
-            when(repository.countByDestination(DESTINATION)).thenReturn(0L);
+            when(repository.countByDestinationFiltered(DESTINATION, null)).thenReturn(0L);
 
-            getMessagesByDestinationUseCase.execute(DESTINATION, 2, 5);
+            getMessagesByDestinationUseCase.execute(DESTINATION, 2, 5, null);
 
-            verify(repository).findByDestinationPaged(DESTINATION, 2, 5);
+            verify(repository).findByDestinationPagedFiltered(DESTINATION, 2, 5, null);
+            verify(repository).countByDestinationFiltered(DESTINATION, null);
         }
 
         @Test
-        @DisplayName("Should call countByDestination with the destination parameter")
-        void shouldCallCountWithDestination() {
-            when(repository.findByDestinationPaged(DESTINATION, 0, 10))
+        @DisplayName("Should call findByDestinationPagedFiltered with true when success filter is true")
+        void shouldCallFindWithTrueFilter() {
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 0, 10, true))
                     .thenReturn(Collections.emptyList());
-            when(repository.countByDestination(DESTINATION)).thenReturn(0L);
+            when(repository.countByDestinationFiltered(DESTINATION, true)).thenReturn(0L);
 
-            getMessagesByDestinationUseCase.execute(DESTINATION, 0, 10);
+            getMessagesByDestinationUseCase.execute(DESTINATION, 0, 10, true);
 
-            verify(repository).countByDestination(DESTINATION);
+            verify(repository).findByDestinationPagedFiltered(DESTINATION, 0, 10, true);
+            verify(repository).countByDestinationFiltered(DESTINATION, true);
+        }
+
+        @Test
+        @DisplayName("Should call findByDestinationPagedFiltered with false when success filter is false")
+        void shouldCallFindWithFalseFilter() {
+            when(repository.findByDestinationPagedFiltered(DESTINATION, 1, 20, false))
+                    .thenReturn(Collections.emptyList());
+            when(repository.countByDestinationFiltered(DESTINATION, false)).thenReturn(0L);
+
+            getMessagesByDestinationUseCase.execute(DESTINATION, 1, 20, false);
+
+            verify(repository).findByDestinationPagedFiltered(DESTINATION, 1, 20, false);
+            verify(repository).countByDestinationFiltered(DESTINATION, false);
         }
     }
 }

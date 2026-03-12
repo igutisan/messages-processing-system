@@ -9,9 +9,9 @@ public interface ProcessedMessageRepository {
 
     ProcessedMessage save(ProcessedMessage message);
 
-    List<ProcessedMessage> findByDestinationPaged(String destination, int page, int size);
+    List<ProcessedMessage> findByDestinationPagedFiltered(String destination, int page, int size, Boolean success);
 
-    long countByDestination(String destination);
+    long countByDestinationFiltered(String destination, Boolean success);
 
     long countSuccessfulByDestinationSince(String destination, Instant since);
 }

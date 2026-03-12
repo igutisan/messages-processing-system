@@ -18,14 +18,15 @@ public class GetMessagesByDestinationUseCase {
 
     private final ProcessedMessageRepository repository;
 
-    public PagedResponse<ProcessedMessageResponseDto> execute(String destination, int page, int size) {
-        List<ProcessedMessage> msgPage = repository.findByDestinationPaged(destination, page, size);
-        long totalElements = repository.countByDestination(destination);
+    public PagedResponse<ProcessedMessageResponseDto> execute(String destination, int page, int size, Boolean success) {
+        List<ProcessedMessage> msgPage = repository.findByDestinationPagedFiltered(destination, page, size, success);
+        long totalElements = repository.countByDestinationFiltered(destination, success);
         int totalPages = (int) Math.ceil((double) totalElements / size);
-        boolean isLast = page >= (totalPages - 1);
+        boolean isLast = (page + 1) >= totalPages;
 
-        log.info("Retrieved {} messages for destination '{}' (Total in system: {})", msgPage.size(), destination,
-                totalElements);
+        log.info("Retrieved {} messages for destination '{}' (Total in system: {}, Success filter: {})", msgPage.size(),
+                destination,
+                totalElements, success);
 
         List<ProcessedMessageResponseDto> dtos = msgPage.stream()
                 .map(this::toDto)

@@ -5,6 +5,7 @@ import com.prueba.tecnica.domain.enums.MessageType;
 import com.prueba.tecnica.domain.exception.DomainException;
 import com.prueba.tecnica.domain.exception.OriginNotFoundException;
 import com.prueba.tecnica.domain.gateway.PetitionMessageGateway;
+import com.prueba.tecnica.domain.model.Petition;
 import com.prueba.tecnica.domain.repository.OriginLineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,6 @@ import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 @Service
 @RequiredArgsConstructor
 public class PetitionUseCase {
@@ -31,8 +31,15 @@ public class PetitionUseCase {
         validateOriginExists(request.origin());
         validateMultimediaContent(request);
 
+        Petition petition = new Petition(
+                request.origin(),
+                request.destination(),
+                request.messageType(),
+                request.content(),
+                receivedAt);
+
         log.info("Validation successful. Forwarding petition to message broker.");
-        petitionMessageGateway.publishPetition(request, receivedAt);
+        petitionMessageGateway.publishPetition(petition);
     }
 
     private void validateOriginExists(String origin) {

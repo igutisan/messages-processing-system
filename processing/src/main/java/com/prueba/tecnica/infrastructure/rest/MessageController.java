@@ -23,14 +23,17 @@ public class MessageController {
     public ResponseEntity<ApiResponse<PagedResponse<ProcessedMessageResponseDto>>> getMessagesByDestination(
             @PathVariable String destination,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean success) {
 
-        PagedResponse<ProcessedMessageResponseDto> pagedMessages = getMessagesByDestinationUseCase.execute(destination, page,
-                size);
+        PagedResponse<ProcessedMessageResponseDto> pagedMessages = getMessagesByDestinationUseCase.execute(destination,
+                page,
+                size, success);
 
         if (pagedMessages.totalElements() == 0) {
+            String filterMsg = success == null ? "" : (success ? " (successful only)" : " (failed only)");
             return ResponseEntity.ok(
-                    ApiResponse.success(pagedMessages, "No messages found for this destination"));
+                    ApiResponse.success(pagedMessages, "No messages found for this destination" + filterMsg));
         }
 
         return ResponseEntity.ok(ApiResponse.success(pagedMessages));

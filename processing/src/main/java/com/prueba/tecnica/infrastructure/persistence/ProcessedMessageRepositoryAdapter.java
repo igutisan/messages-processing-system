@@ -25,16 +25,33 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     }
 
     @Override
-    public List<ProcessedMessage> findByDestinationPaged(String destination, int page, int size) {
+    public List<ProcessedMessage> findByDestinationPagedFiltered(String destination, int page, int size,
+            Boolean success) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
-        return mongoRepository.findByDestination(destination, pageable).stream()
+        List<ProcessedMessageDocument> documents;
+
+        if (success == null) {
+            documents = mongoRepository.findByDestination(destination, pageable);
+        } else if (success) {
+            documents = mongoRepository.findByDestinationAndErrorIsNull(destination, pageable);
+        } else {
+            documents = mongoRepository.findByDestinationAndErrorIsNotNull(destination, pageable);
+        }
+
+        return documents.stream()
                 .map(ProcessedMessageMapper::toDomain)
                 .toList();
     }
 
     @Override
-    public long countByDestination(String destination) {
-        return mongoRepository.countByDestination(destination);
+    public long countByDestinationFiltered(String destination, Boolean success) {
+        if (success == null) {
+            return mongoRepository.countByDestination(destination);
+        } else if (success) {
+            return mongoRepository.countByDestinationAndErrorIsNull(destination);
+        } else {
+            return mongoRepository.countByDestinationAndErrorIsNotNull(destination);
+        }
     }
 
     @Override

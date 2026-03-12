@@ -14,5 +14,13 @@ public interface MongoProcessedMessageRepository extends MongoRepository<Process
 
     long countByDestination(String destination);
 
+    List<ProcessedMessageDocument> findByDestinationAndErrorIsNull(String destination, Pageable pageable);
+
+    List<ProcessedMessageDocument> findByDestinationAndErrorIsNotNull(String destination, Pageable pageable);
+
+    long countByDestinationAndErrorIsNull(String destination);
+
+    long countByDestinationAndErrorIsNotNull(String destination);
+
     long countByDestinationAndCreatedDateAfterAndErrorIsNull(String destination, Instant since);
 }
