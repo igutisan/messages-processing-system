@@ -13,5 +13,5 @@ public interface ProcessedMessageRepository {
 
     long countByDestinationFiltered(String destination, Boolean success);
 
-    long countSuccessfulByDestinationSince(String destination, Instant since);
+    boolean incrementMessageCountIfAllowed(String destination, Instant windowStart, int max);
 }

@@ -9,6 +9,11 @@ import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,6 +21,7 @@ import org.springframework.stereotype.Component;
 public class ProcessedMessageRepositoryAdapter implements ProcessedMessageRepository {
 
     private final MongoProcessedMessageRepository mongoRepository;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public ProcessedMessage save(ProcessedMessage message) {
@@ -55,7 +61,36 @@ public class ProcessedMessageRepositoryAdapter implements ProcessedMessageReposi
     }
 
     @Override
-    public long countSuccessfulByDestinationSince(String destination, Instant since) {
-        return mongoRepository.countByDestinationAndCreatedDateAfterAndErrorIsNull(destination, since);
+    public boolean incrementMessageCountIfAllowed(String destination, Instant windowStart, int max) {
+        Query query = new Query(
+                Criteria.where("destination").is(destination)
+                        .and("count").lt(max)
+                        .and("windowStart").gte(windowStart));
+
+        Update increment = new Update().inc("count", 1);
+
+        DestinationCounterDocument result = mongoTemplate.findAndModify(
+                query,
+                increment,
+                FindAndModifyOptions.options().returnNew(true),
+                DestinationCounterDocument.class);
+
+        if (result != null) {
+            return true;
+        }
+
+        Query createQuery = new Query(Criteria.where("destination").is(destination));
+        Update upsert = new Update()
+                .setOnInsert("destination", destination)
+                .setOnInsert("windowStart", windowStart)
+                .setOnInsert("count", 1);
+
+        DestinationCounterDocument created = mongoTemplate.findAndModify(
+                createQuery,
+                upsert,
+                FindAndModifyOptions.options().upsert(true).returnNew(true),
+                DestinationCounterDocument.class);
+
+        return created != null && created.getCount() <= max;
     }
 }

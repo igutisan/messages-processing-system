@@ -16,10 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -39,6 +39,23 @@ class ProcessMessageUseCaseTest {
         private static final String CONTENT = "Hello world";
         private static final String RECEIVED_AT = Instant.now().toString();
 
+        private void givenSlotAvailable() {
+                when(processedMessageRepository.incrementMessageCountIfAllowed(anyString(), any(Instant.class),
+                                anyInt()))
+                                .thenReturn(true);
+        }
+
+        private void givenSlotExhausted() {
+                when(processedMessageRepository.incrementMessageCountIfAllowed(anyString(), any(Instant.class),
+                                anyInt()))
+                                .thenReturn(false);
+        }
+
+        private void givenSaveReturnsInput() {
+                when(processedMessageRepository.save(any(ProcessedMessage.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
+        }
+
         @Nested
         @DisplayName("Successful message processing")
         class SuccessfulProcessing {
@@ -46,15 +63,11 @@ class ProcessMessageUseCaseTest {
                 @Test
                 @DisplayName("Should save a TEXT message with null error when within rate limit")
                 void shouldSaveTextMessageWithNullError() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
                         PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
                                         CONTENT);
-
                         ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
 
                         assertNull(result.getError(), "Error should be null when within rate limit");
@@ -68,33 +81,24 @@ class ProcessMessageUseCaseTest {
                 @EnumSource(MessageType.class)
                 @DisplayName("Should correctly parse all MessageType values from string")
                 void shouldParseAllMessageTypes(MessageType type) {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
                         PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, type.name(),
                                         CONTENT);
-
                         ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
 
-                        assertEquals(type, result.getMessageType(),
-                                        "MessageType should match the input string");
+                        assertEquals(type, result.getMessageType());
                 }
 
                 @Test
                 @DisplayName("Should parse messageType case-insensitively")
                 void shouldParseMessageTypeCaseInsensitively() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
                         PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "text",
                                         CONTENT);
-
                         ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
 
                         assertEquals(MessageType.TEXT, result.getMessageType());
@@ -103,36 +107,26 @@ class ProcessMessageUseCaseTest {
                 @Test
                 @DisplayName("Should calculate processingTime as non-negative value")
                 void shouldCalculateNonNegativeProcessingTime() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
                         PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
                                         CONTENT);
-                        String recentReceivedAt = Instant.now().toString();
-
-                        ProcessedMessage result = processMessageUseCase.process(dto, recentReceivedAt);
+                        ProcessedMessage result = processMessageUseCase.process(dto, Instant.now().toString());
 
                         assertNotNull(result.getProcessingTime());
-                        assertTrue(result.getProcessingTime() >= 0,
-                                        "Processing time should be non-negative");
+                        assertTrue(result.getProcessingTime() >= 0);
                 }
 
                 @Test
                 @DisplayName("Should persist the message via repository save")
                 void shouldCallRepositorySave() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-
-                        processMessageUseCase.process(dto, RECEIVED_AT);
+                        processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
                         verify(processedMessageRepository, times(1)).save(any(ProcessedMessage.class));
                 }
@@ -144,19 +138,16 @@ class ProcessMessageUseCaseTest {
                                         "saved-id", ORIGIN, DESTINATION, MessageType.TEXT, CONTENT, 10L, Instant.now(),
                                         null);
 
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenReturn(savedMessage);
+                        when(processedMessageRepository.incrementMessageCountIfAllowed(anyString(), any(Instant.class),
+                                        anyInt()))
+                                        .thenReturn(true);
+                        when(processedMessageRepository.save(any(ProcessedMessage.class))).thenReturn(savedMessage);
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
+                        ProcessedMessage result = processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
-                        ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
-
-                        assertSame(savedMessage, result,
-                                        "Should return exactly what the repository returned");
+                        assertSame(savedMessage, result);
                 }
         }
 
@@ -165,192 +156,105 @@ class ProcessMessageUseCaseTest {
         class RateLimiting {
 
                 @Test
-                @DisplayName("Should set error message when destination has reached the limit (3)")
+                @DisplayName("Should set error message when slot is not acquired (limit reached)")
                 void shouldSetErrorWhenLimitReached() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(3L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotExhausted();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-
-                        ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
-
-                        assertNotNull(result.getError(), "Error should not be null when limit is reached");
-                        assertTrue(result.getError().contains(DESTINATION),
-                                        "Error message should mention the destination");
-                        assertTrue(result.getError().contains("3"),
-                                        "Error message should mention the limit number");
-                }
-
-                @Test
-                @DisplayName("Should set error message when destination has exceeded the limit (>3)")
-                void shouldSetErrorWhenLimitExceeded() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(5L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
-
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-
-                        ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
+                        ProcessedMessage result = processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
                         assertNotNull(result.getError());
+                        assertTrue(result.getError().contains(DESTINATION));
+                        assertTrue(result.getError().contains("3"));
                 }
 
                 @Test
-                @DisplayName("Should NOT set error when count is below the limit (2 of 3)")
-                void shouldNotSetErrorWhenBelowLimit() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(2L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                @DisplayName("Should set null error when slot is acquired (within limit)")
+                void shouldSetNullErrorWhenSlotAcquired() {
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
+                        ProcessedMessage result = processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
-                        ProcessedMessage result = processMessageUseCase.process(dto, RECEIVED_AT);
-
-                        assertNull(result.getError(),
-                                        "Error should be null when count is below the limit");
+                        assertNull(result.getError());
                 }
 
                 @Test
                 @DisplayName("Should still SAVE the message even when rate limit is exceeded")
                 void shouldStillSaveWhenRateLimited() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(3L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        givenSlotExhausted();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-
-                        processMessageUseCase.process(dto, RECEIVED_AT);
+                        processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
                         verify(processedMessageRepository).save(any(ProcessedMessage.class));
                 }
 
                 @Test
-                @DisplayName("Should use a 24-hour window for rate limit check")
+                @DisplayName("Should call incrementMessageCountIfAllowed with approximately a 24-hour window")
                 void shouldUse24HourWindowForRateLimit() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
-
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
                         Instant before = Instant.now().minusSeconds(1);
-                        processMessageUseCase.process(dto, RECEIVED_AT);
+                        processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
                         ArgumentCaptor<Instant> windowCaptor = ArgumentCaptor.forClass(Instant.class);
-                        verify(processedMessageRepository).countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        windowCaptor.capture());
+                        verify(processedMessageRepository).incrementMessageCountIfAllowed(eq(DESTINATION),
+                                        windowCaptor.capture(),
+                                        eq(3));
 
                         Instant windowStart = windowCaptor.getValue();
-
-                        Instant expected24hAgo = before.minusSeconds(24 * 60 * 60);
-                        long diffSeconds = Math.abs(windowStart.getEpochSecond() - expected24hAgo.getEpochSecond());
-                        assertTrue(diffSeconds < 5,
-                                        "Rate limit window should start approximately 24 hours ago, but diff was "
-                                                        + diffSeconds + "s");
+                        Instant expected = before.minusSeconds(24 * 60 * 60);
+                        long diffSeconds = Math.abs(windowStart.getEpochSecond() - expected.getEpochSecond());
+                        assertTrue(diffSeconds < 5, "Window should be ~24h ago, diff was " + diffSeconds + "s");
                 }
 
                 @Test
-                @DisplayName("Should allow 1st, 2nd, 3rd message, then BLOCK the 4th for the same destination")
-                void shouldAllowUpToLimitThenBlock() {
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
-
-                        // Simulate sequential calls: repo returns 0, 1, 2 (OK), then 3 (blocked)
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L, 1L, 2L, 3L);
-
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-                        String receivedAt = Instant.now().toString();
-
-                        ProcessedMessage result1 = processMessageUseCase.process(dto, receivedAt);
-                        ProcessedMessage result2 = processMessageUseCase.process(dto, receivedAt);
-                        ProcessedMessage result3 = processMessageUseCase.process(dto, receivedAt);
-                        ProcessedMessage result4 = processMessageUseCase.process(dto, receivedAt);
-
-                        assertNull(result1.getError(), "1st message should pass");
-                        assertNull(result2.getError(), "2nd message should pass");
-                        assertNull(result3.getError(), "3rd message should pass");
-                        assertNotNull(result4.getError(), "4th message should be blocked");
-                        assertTrue(result4.getError().contains(DESTINATION));
-                }
-
-                @Test
-                @DisplayName("Should evaluate rate limit PER DESTINATION — blocking one should not affect another")
+                @DisplayName("Should evaluate rate limit per destination independently")
                 void shouldEvaluateRateLimitPerDestination() {
                         String destinationA = "+573001111111";
                         String destinationB = "+573002222222";
 
-                        // Destination A has reached the limit, destination B has not
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(destinationA),
-                                        any(Instant.class)))
-                                        .thenReturn(3L);
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(destinationB),
-                                        any(Instant.class)))
-                                        .thenReturn(1L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                        when(processedMessageRepository.incrementMessageCountIfAllowed(eq(destinationA),
+                                        any(Instant.class), anyInt()))
+                                        .thenReturn(false);
+                        when(processedMessageRepository.incrementMessageCountIfAllowed(eq(destinationB),
+                                        any(Instant.class), anyInt()))
+                                        .thenReturn(true);
+                        givenSaveReturnsInput();
 
-                        String receivedAt = Instant.now().toString();
+                        ProcessedMessage resultA = processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, destinationA, "TEXT", CONTENT),
+                                        RECEIVED_AT);
+                        ProcessedMessage resultB = processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, destinationB, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
-                        PetitionMessageRequestDto dtoA = new PetitionMessageRequestDto(ORIGIN, destinationA, "TEXT",
-                                        CONTENT);
-                        PetitionMessageRequestDto dtoB = new PetitionMessageRequestDto(ORIGIN, destinationB, "TEXT",
-                                        CONTENT);
-
-                        ProcessedMessage resultA = processMessageUseCase.process(dtoA, receivedAt);
-                        ProcessedMessage resultB = processMessageUseCase.process(dtoB, receivedAt);
-
-                        assertNotNull(resultA.getError(), "Destination A should be blocked (3 messages)");
-                        assertNull(resultB.getError(), "Destination B should still be allowed (1 message)");
+                        assertNotNull(resultA.getError(), "Destination A should be blocked");
+                        assertNull(resultB.getError(), "Destination B should be allowed");
                 }
 
                 @Test
-                @DisplayName("Should query the repository with a fresh 24h window on EACH call")
-                void shouldQueryFresh24hWindowOnEachCall() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(eq(DESTINATION),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                @DisplayName("Should call tryAcquireSlot with MAX=3")
+                void shouldCallTryAcquireSlotWithCorrectMax() {
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-                        String receivedAt = Instant.now().toString();
+                        processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
-                        processMessageUseCase.process(dto, receivedAt);
-                        processMessageUseCase.process(dto, receivedAt);
-
-                        ArgumentCaptor<Instant> windowCaptor = ArgumentCaptor.forClass(Instant.class);
-                        verify(processedMessageRepository, times(2))
-                                        .countSuccessfulByDestinationSince(eq(DESTINATION), windowCaptor.capture());
-
-                        List<Instant> windows = windowCaptor.getAllValues();
-                        assertEquals(2, windows.size(), "Should have queried the 24h window exactly twice");
-
-                        // Both windows should be approximately 24h ago (within seconds of each other)
-                        long diffBetweenWindows = Math.abs(
-                                        windows.get(0).getEpochSecond() - windows.get(1).getEpochSecond());
-                        assertTrue(diffBetweenWindows < 2,
-                                        "Both calls should use a fresh 24h window from 'now', diff was "
-                                                        + diffBetweenWindows + "s");
+                        verify(processedMessageRepository).incrementMessageCountIfAllowed(eq(DESTINATION),
+                                        any(Instant.class), eq(3));
                 }
         }
 
@@ -359,18 +263,14 @@ class ProcessMessageUseCaseTest {
         class DataIntegrity {
 
                 @Test
-                @DisplayName("Should map origin from DTO to ProcessedMessage")
-                void shouldMapOrigin() {
-                        when(processedMessageRepository.countSuccessfulByDestinationSince(anyString(),
-                                        any(Instant.class)))
-                                        .thenReturn(0L);
-                        when(processedMessageRepository.save(any(ProcessedMessage.class)))
-                                        .thenAnswer(invocation -> invocation.getArgument(0));
+                @DisplayName("Should map all fields from DTO to ProcessedMessage")
+                void shouldMapAllFieldsFromDto() {
+                        givenSlotAvailable();
+                        givenSaveReturnsInput();
 
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT",
-                                        CONTENT);
-
-                        processMessageUseCase.process(dto, RECEIVED_AT);
+                        processMessageUseCase.process(
+                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION, "TEXT", CONTENT),
+                                        RECEIVED_AT);
 
                         ArgumentCaptor<ProcessedMessage> captor = ArgumentCaptor.forClass(ProcessedMessage.class);
                         verify(processedMessageRepository).save(captor.capture());
@@ -385,11 +285,11 @@ class ProcessMessageUseCaseTest {
                 @Test
                 @DisplayName("Should throw IllegalArgumentException for invalid messageType string")
                 void shouldThrowForInvalidMessageType() {
-                        PetitionMessageRequestDto dto = new PetitionMessageRequestDto(ORIGIN, DESTINATION,
-                                        "INVALID_TYPE", CONTENT);
-
                         assertThrows(IllegalArgumentException.class,
-                                        () -> processMessageUseCase.process(dto, RECEIVED_AT));
+                                        () -> processMessageUseCase.process(
+                                                        new PetitionMessageRequestDto(ORIGIN, DESTINATION,
+                                                                        "INVALID_TYPE", CONTENT),
+                                                        RECEIVED_AT));
                 }
         }
 }
